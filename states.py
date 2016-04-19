@@ -1,6 +1,9 @@
 import requests
 import json
+import os
 from bs4 import BeautifulSoup
+
+open('states.txt', 'w')
 
 BASE_URL = "http://en.wikipedia.org/wiki/"
 STATE_URLS = [
@@ -107,12 +110,22 @@ try:
 
     for state_url in STATE_URLS:
         print("Processing: %s" % state_url)
-        url = BASE_URL + state_url
-        r = requests.get(url)
-        if r.status_code != 200:
-            raise RuntimeError(url)
 
-        soup_content = BeautifulSoup(r.content, "html.parser").find('div', {'id': 'bodyContent'}).getText()
+        soup_content = None
+        if not os.path.isfile('states/cached-%s' % state_url):
+            url = BASE_URL + state_url
+            r = requests.get(url)
+            if r.status_code != 200:
+                raise RuntimeError(url)
+
+            soup_content = BeautifulSoup(r.content, "html.parser").find('div', {'id': 'bodyContent'}).getText()
+
+            cached_state_wiki = open('states/cached-%s' % state_url, 'w')
+            cached_state_wiki.write(soup_content)
+
+        else:
+            soup_content = open('states/cached-%s' % state_url).read()
+
         post_data = {'text': soup_content[:50000]}
         raw_sentiment = requests.post("http://text-processing.com/api/sentiment/", data=post_data)
 
@@ -122,8 +135,9 @@ try:
         label_count[sentiment_label] += 1
         analyze_probability(state_url, sentiment['probability'])
 
-except:
+except :
     print('')
+    raise
 
 
 
